@@ -4,11 +4,35 @@
 >
 > Pull requests opened on the mirror cannot be merged there. They are read, and a fix worth taking is recreated in the monorepo. Because a fix that has landed internally is not public until the next release, filing an issue before writing a patch is the quickest way to find out whether a bug is already fixed.
 
-SDK and CLI for building [ERC-8257](https://github.com/ethereum/ERCs/pull/1723) compliant AI agent tools. Provides manifest validation, onchain registration, gating middleware, framework adapters, and project scaffolding.
+SDK and CLI for building AI-callable HTTPS tools. The HTTP contract (JSON Schema manifests, `.well-known` discovery, host adapters) follows [ERC-8257](https://github.com/ethereum/ERCs/pull/1723). This fork adds a **Solana Virtual Machine (SVM)** stack: base58 addresses, cluster/RPC identity, Sign-In With Solana, SPL token/NFT RPC gates, and x402 `exact` payments via SPL `TransferChecked`.
 
-Pairs with the onchain reference implementation at [ProjectOpenSea/tool-registry](https://github.com/ProjectOpenSea/tool-registry) — the `ToolRegistry` contract and example access predicates this SDK reads from and writes to.
+EVM `ToolRegistry` clients remain for Base and other supported chains. SVM registration uses instruction plans and a configurable program id — there is no canonical CREATE2 deployment. See [docs/svm.md](docs/svm.md) and [docs/migrating-to-svm.md](docs/migrating-to-svm.md).
 
-## Quick Start
+Pairs with the EVM reference implementation at [ProjectOpenSea/tool-registry](https://github.com/ProjectOpenSea/tool-registry) when you still target that contract.
+
+## Quick Start (SVM)
+
+```bash
+# Hash a manifest the way the SVM registry stores it
+npx @opensea/tool-sdk hash ./src/manifest.ts --algorithm sha256
+
+# Inspect an SPL gate against any Solana-compatible RPC (no program deploy)
+npx @opensea/tool-sdk inspect \
+  --network solana \
+  --check-access <PUBKEY> \
+  --spl-gate <MINT> \
+  --rpc-url $SOLANA_RPC_URL
+
+# Print the register instruction plan (does not sign or send)
+npx @opensea/tool-sdk register \
+  --metadata https://my-tool.example/.well-known/ai-tool/my-tool.json \
+  --network solana \
+  --dry-run
+```
+
+Working example: [`examples/svm-echo-tool`](examples/svm-echo-tool).
+
+## Quick Start (EVM / ERC-8257)
 
 ```bash
 # 1. Scaffold a new tool project
@@ -55,10 +79,11 @@ npx @opensea/tool-sdk validate ./manifest.json
 
 ### `hash [path]`
 
-Compute the JCS keccak256 hash of a tool manifest (RFC 8785 canonicalization).
+Compute the JCS hash of a tool manifest (RFC 8785 canonicalization). Default algorithm is keccak256 (ERC-8257 / EVM registry). Pass `--algorithm sha256` for the SVM registry.
 
 ```bash
 npx @opensea/tool-sdk hash ./manifest.json
+npx @opensea/tool-sdk hash ./manifest.json --algorithm sha256
 ```
 
 The hash is taken over the full manifest as served, per ERC-8257 §2: every field is included (including namespaced extension fields), and no fields are stripped or defaulted before hashing. Verifiers reproduce it by JCS-canonicalizing the manifest and hashing that, so the SDK and any other RFC 8785 implementation agree. The command prints any bare-extension warning to stderr, so the hash itself stays on stdout and piping is unaffected.

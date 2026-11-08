@@ -94,7 +94,11 @@ export class UptoEip3009Scheme implements SchemeNetworkClient {
  * "unsupported network". Falls back to the original string if unrecognized.
  */
 function v1Network(network: string): string {
-  return resolveNetwork(network)?.canonical ?? network
+  const resolved = resolveNetwork(network)
+  if (!resolved) return network
+  return resolved.family === "svm"
+    ? (resolved.caip2 ?? resolved.canonical)
+    : resolved.canonical
 }
 
 /**
@@ -116,7 +120,12 @@ export async function signEip3009Authorization(
   if (resolved === undefined) {
     throw new Error(`Unsupported network: ${reqs.network}`)
   }
-  const { chainId } = resolved
+  if (resolved.family !== "evm" || resolved.chainId === undefined) {
+    throw new Error(
+      `EIP-3009 x402 signing does not support SVM network ${reqs.network}; use ExactSvmScheme`,
+    )
+  }
+  const chainId = resolved.chainId
 
   const isAdapter = "capabilities" in signer
   const address = isAdapter

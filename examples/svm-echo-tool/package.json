@@ -1,0 +1,10 @@
+{
+  "name": "svm-echo-tool",
+  "private": true,
+  "type": "module",
+  "description": "Minimal SVM-gated echo tool: SIWS identity, optional SPL token gate, Solana x402 paywall config.",
+  "scripts": {
+    "test": "vitest run",
+    "type-check": "tsc --noEmit"
+  }
+}

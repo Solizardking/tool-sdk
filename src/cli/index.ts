@@ -26,7 +26,9 @@ declare const __VERSION__: string
 
 export const program = new Command()
   .name("tool-sdk")
-  .description("SDK and CLI for building ERC-8257 compliant AI agent tools")
+  .description(
+    "SDK and CLI for building AI agent tools on Solana (SVM) and ERC-8257 EVM registries",
+  )
   .version(__VERSION__)
 
 program.addCommand(authCommand)

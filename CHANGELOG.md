@@ -1,5 +1,17 @@
 # @opensea/tool-sdk
 
+## 0.32.0
+
+### Minor Changes
+
+- SVM adaptation of the tool SDK (this is not feature-parity with a deployed Solana registry program).
+
+  **Kept:** ERC-8257-shaped HTTPS manifests, well-known handlers, Vercel/Cloudflare/Express adapters, `createToolHandler`, EVM `ToolRegistryClient` / EIP-3009 / Base x402.
+
+  **Added:** Solana addresses (base58, case-sensitive), cluster + CAIP-2 networks including custom SVM RPC endpoints, SHA-256 manifest hashing, SIWS identity (`siwsGate`, `siwsAuthenticatedFetch`), SPL / native-SOL RPC predicates (`svmPredicateGate`), x402 `exact` SVM scheme (`ExactSvmScheme`, `svmX402Gate`, `defineSvmToolPaywall`), `SvmToolRegistryClient` instruction plans + PDAs, `createExternalSvmSigner` (no hot keys), CLI `--network solana|solana-devnet|solana-testnet` for `register` / `inspect` / `update-metadata` / `hash --algorithm sha256`, `examples/svm-echo-tool`, `docs/svm.md`, `docs/migrating-to-svm.md`.
+
+  **Not included:** a deployed SVM registry program, OpenSea usage reporting for Solana signatures, DAS/Metaplex collection indexing, live sends in tests.
+
 ## 0.31.1
 
 ### Patch Changes

@@ -91,6 +91,14 @@ describe("validateManifest", () => {
     expect(result.success).toBe(false)
   })
 
+  it("should accept a Solana base58 creatorAddress", () => {
+    const result = validateManifest({
+      ...validManifest,
+      creatorAddress: "11111111111111111111111111111111",
+    })
+    expect(result.success).toBe(true)
+  })
+
   it("should reject creatorAddress with uppercase hex (checksummed)", () => {
     const result = validateManifest({
       ...validManifest,

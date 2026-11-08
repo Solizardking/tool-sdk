@@ -10,10 +10,12 @@ import {
   createBankrAccount,
   createExternalSignerAccount,
 } from "../../lib/client/external-signer.js"
+import { siwsAuthenticatedFetch } from "../../lib/client/siws-auth.js"
 import {
   createWalletForProvider,
   createWalletFromEnv,
   isEvmAdapter,
+  isSvmAdapter,
   type WalletAdapter,
   type WalletProvider,
   WrongChainTypeError,
@@ -30,7 +32,7 @@ interface AuthOptions {
 
 export const authCommand = new Command("auth")
   .description(
-    "Make an authenticated call to a predicate-gated tool endpoint via EIP-3009 zero-value authorization",
+    "Make an authenticated call to a gated tool endpoint (EIP-3009 on EVM, SIWS on SVM)",
   )
   .argument("<url>", "Tool endpoint URL")
   .option("--body <json>", "JSON body (inline string or @path/to/file.json)")
@@ -93,11 +95,37 @@ export const authCommand = new Command("auth")
         )
         process.exit(1)
       }
-      // These flows sign EIP-712, so they need an EVM wallet. Must run before the viem getAddress()
-      // below, which throws on a base58 Solana key and would mask the real reason.
+      if (isSvmAdapter(adapter)) {
+        console.log(pc.cyan("Building SIWS authorization..."))
+        console.log(`  Address: ${await adapter.getAddress()}`)
+        console.log(`  Chain:   ${options.chain ?? "mainnet"}`)
+        let res: globalThis.Response
+        try {
+          res = await siwsAuthenticatedFetch(url, {
+            signer: adapter,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: inputBody,
+            chainId:
+              options.chain === "base"
+                ? "mainnet"
+                : (options.chain ?? "mainnet"),
+            signal: AbortSignal.timeout(30_000),
+          })
+        } catch (err) {
+          console.error(pc.red(`Error: Failed to reach ${url}`))
+          console.error(
+            pc.dim(err instanceof Error ? err.message : String(err)),
+          )
+          process.exit(1)
+        }
+        console.log(`Status: ${res.status}`)
+        console.log(await res.text())
+        return
+      }
+      // EIP-712 path: need an EVM wallet. Must run before viem getAddress(),
+      // which throws on a base58 Solana key and would mask the real reason.
       if (!isEvmAdapter(adapter)) {
-        // process.exit is `never`, so `adapter` is the EVM member below. The message comes from
-        // the shared error so all four EVM-only flows word it identically.
         console.error(
           pc.red(
             `Error: ${new WrongChainTypeError(adapter, "evm", "this command").message}`,

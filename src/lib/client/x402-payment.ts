@@ -1,6 +1,7 @@
 import type { WalletAdapter } from "@opensea/wallet-adapters"
 import { x402Client, x402HTTPClient } from "@x402/core/client"
 import type { Account } from "viem"
+import { isSvmNetworkName } from "../svm/networks.js"
 import type { CallerUsageReporterConfig } from "../usage/caller-reporter.js"
 import { reportCallerX402Usage } from "../usage/caller-reporter.js"
 import {
@@ -15,6 +16,7 @@ import {
   toX402PaymentRequired,
   UptoEip3009Scheme,
 } from "./x402-scheme.js"
+import { ExactSvmScheme } from "./x402-svm.js"
 
 const REJECTED_ADDRESSES = new Set([
   "0x0000000000000000000000000000000000000000",
@@ -282,7 +284,7 @@ export async function paidFetch(
   if (reportCallerUsage && paidRes.ok) {
     const settlement = extractSettlementTxHash(paidRes)
     const resolved = resolveNetwork(requirements.network)
-    if (settlement && resolved) {
+    if (settlement && resolved?.family === "evm" && resolved.chainId) {
       const callerAddress = await resolveSignerAddress(signer)
       const config =
         typeof reportCallerUsage === "object" ? reportCallerUsage : {}
@@ -374,17 +376,29 @@ export function validatePaymentRequirements(
     allowedAssets?: string[]
   },
 ): void {
-  const payToLower = reqs.payTo.toLowerCase()
+  const svm =
+    isSvmNetworkName(reqs.network) || reqs.network.startsWith("solana")
+  // Solana pubkeys are case-sensitive; never lowercase them.
+  const payToKey = svm ? reqs.payTo : reqs.payTo.toLowerCase()
 
-  if (REJECTED_ADDRESSES.has(payToLower)) {
+  if (!svm && REJECTED_ADDRESSES.has(payToKey)) {
     throw new Error(
       `x402: payTo address ${reqs.payTo} is a burn/zero address — refusing to sign`,
     )
   }
+  if (svm && reqs.payTo === "11111111111111111111111111111111") {
+    throw new Error(
+      `x402: payTo ${reqs.payTo} is the Solana system program — refusing to sign`,
+    )
+  }
 
   if (opts.allowedRecipients) {
-    const allowed = new Set(opts.allowedRecipients.map(a => a.toLowerCase()))
-    if (!allowed.has(payToLower)) {
+    const allowed = new Set(
+      svm
+        ? opts.allowedRecipients
+        : opts.allowedRecipients.map(a => a.toLowerCase()),
+    )
+    if (!allowed.has(payToKey)) {
       throw new Error(
         `x402: payTo address ${reqs.payTo} is not in allowedRecipients`,
       )
@@ -408,18 +422,23 @@ export function validatePaymentRequirements(
     }
   }
 
-  const assetLower = reqs.asset.toLowerCase()
+  const assetKey = svm ? reqs.asset : reqs.asset.toLowerCase()
   if (opts.allowedAssets) {
-    const allowed = new Set(opts.allowedAssets.map(a => a.toLowerCase()))
-    if (!allowed.has(assetLower)) {
+    const allowed = new Set(
+      svm ? opts.allowedAssets : opts.allowedAssets.map(a => a.toLowerCase()),
+    )
+    if (!allowed.has(assetKey)) {
       throw new Error(`x402: asset ${reqs.asset} is not in allowedAssets`)
     }
   } else {
     const expectedUsdc = resolveNetwork(reqs.network)?.usdc
-    if (expectedUsdc && assetLower !== expectedUsdc.toLowerCase()) {
-      throw new Error(
-        `x402: asset ${reqs.asset} does not match expected USDC address for ${reqs.network} (${expectedUsdc})`,
-      )
+    if (expectedUsdc) {
+      const expected = svm ? expectedUsdc : expectedUsdc.toLowerCase()
+      if (assetKey !== expected) {
+        throw new Error(
+          `x402: asset ${reqs.asset} does not match expected USDC address for ${reqs.network} (${expectedUsdc})`,
+        )
+      }
     }
   }
 }
@@ -434,15 +453,27 @@ export function createX402Client(
   network: string,
   x402Version: number,
 ): x402Client {
-  const exact = new ExactEip3009Scheme(signer)
-  const upto = new UptoEip3009Scheme(signer)
+  const svm = isSvmNetworkName(network) || network.startsWith("solana")
+  if (svm && !("capabilities" in signer)) {
+    throw new Error(
+      "x402 SVM payments require an SvmWalletAdapter, not a viem Account",
+    )
+  }
+  const exact = svm
+    ? new ExactSvmScheme(signer as WalletAdapter)
+    : new ExactEip3009Scheme(signer)
   const client = new x402Client()
   if (x402Version >= 2) {
     client.register(network as `${string}:${string}`, exact)
-    client.register(network as `${string}:${string}`, upto)
+    if (!svm) {
+      client.register(
+        network as `${string}:${string}`,
+        new UptoEip3009Scheme(signer),
+      )
+    }
   } else {
     client.registerV1(network, exact)
-    client.registerV1(network, upto)
+    if (!svm) client.registerV1(network, new UptoEip3009Scheme(signer))
   }
   return client
 }

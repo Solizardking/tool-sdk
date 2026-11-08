@@ -7,6 +7,11 @@ import {
   mainnet,
   shape,
 } from "viem/chains"
+import {
+  getSvmNetwork,
+  isSvmNetworkName,
+  type SvmNetwork,
+} from "../../lib/svm/networks.js"
 
 /**
  * Monad mainnet, mirroring viem's definition. The pinned viem version
@@ -75,9 +80,26 @@ const robinhood = defineChain({
 
 /** Help text for the `--network` CLI option, shared across commands. */
 export const NETWORK_OPTION_DESCRIPTION =
-  "Network: base, mainnet, shape, abstract, monad, or robinhood"
+  "Network: solana, solana-devnet, solana-testnet (SVM), or EVM: base, mainnet, shape, abstract, monad, robinhood"
+
+export type CliNetwork =
+  | { family: "evm"; name: string; chain: Chain }
+  | { family: "svm"; name: string; network: SvmNetwork }
+
+export function resolveCliNetwork(name: string): CliNetwork {
+  if (isSvmNetworkName(name) || name === "mainnet-beta") {
+    const network = getSvmNetwork(name === "mainnet-beta" ? "solana" : name)
+    return { family: "svm", name: network.name, network }
+  }
+  return { family: "evm", name, chain: getChain(name) }
+}
 
 export function getChain(network: string) {
+  if (isSvmNetworkName(network) || network === "mainnet-beta") {
+    throw new Error(
+      `--network ${network} is Solana/SVM. This command talks to EVM predicate contracts. Use register, inspect, update-metadata, auth, or pay with --network solana, or see docs/migrating-to-svm.md.`,
+    )
+  }
   switch (network) {
     case "base":
       return base

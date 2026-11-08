@@ -20,6 +20,18 @@ describe("getChain", () => {
     )
   })
 
+  it("rejects SVM names with an EVM-only message", () => {
+    expect(() => getChain("solana")).toThrow(/Solana\/SVM/)
+    expect(() => getChain("solana-devnet")).toThrow(/Solana\/SVM/)
+    expect(() => getChain("mainnet-beta")).toThrow(/Solana\/SVM/)
+  })
+
+  it("routes solana names through resolveCliNetwork as SVM", async () => {
+    const { resolveCliNetwork } = await import("../cli/commands/get-chain.js")
+    expect(resolveCliNetwork("solana").family).toBe("svm")
+    expect(resolveCliNetwork("base").family).toBe("evm")
+  })
+
   it("defines robinhood with an RPC URL, explorer, and multicall3", () => {
     const chain = getChain("robinhood")
     expect(defaultRpcUrl(chain)).toBe("https://rpc.mainnet.chain.robinhood.com")

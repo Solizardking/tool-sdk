@@ -1,4 +1,5 @@
 import { z } from "zod/v4"
+import { isSvmAddress } from "../svm/address.js"
 
 export const PricingEntrySchema = z.object({
   amount: z.string(),
@@ -253,7 +254,10 @@ export const ToolManifestSchema = z.looseObject({
   outputs: jsonSchemaField("outputs"),
   creatorAddress: z
     .string()
-    .regex(/^0x[0-9a-f]{40}$/, "must be a lowercase EVM address"),
+    .refine(
+      value => /^0x[0-9a-f]{40}$/.test(value) || isSvmAddress(value),
+      "must be a lowercase EVM address or a Solana base58 public key",
+    ),
   pricing: z.array(PricingEntrySchema).optional(),
   access: AccessSchema.optional(),
   verifiability: VerifiabilitySchema.optional(),

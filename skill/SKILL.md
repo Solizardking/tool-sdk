@@ -1,6 +1,6 @@
 ---
 name: opensea-tool-sdk
-description: Build, register, and gate AI-callable tool endpoints using the OpenSea Tool Registry (ERC-8257) on Base. Scaffold HTTPS tools with JSON Schema interfaces, register them onchain, gate access via NFT ownership, subscriptions, trait gating, or x402 pay-per-call (USDC), and call gated tools. For querying OpenSea marketplace data use opensea-api instead.
+description: Build, register, and gate AI-callable HTTPS tools. Manifests follow ERC-8257 JSON. SVM path uses Solana pubkeys, SIWS identity, SPL RPC gates, and x402 exact TransferChecked. EVM path still talks to the OpenSea ToolRegistry on Base. For querying OpenSea marketplace data use opensea-api instead.
 homepage: https://github.com/ProjectOpenSea/tool-sdk
 repository: https://github.com/ProjectOpenSea/tool-sdk
 license: MIT
@@ -10,10 +10,19 @@ env:
     required: false
     obtain: https://docs.opensea.io/reference/api-keys#instant-api-key-for-agents
   PRIVATE_KEY:
-    description: Wallet private key for onchain registration and tool calls
+    description: EVM wallet private key for onchain registration (not used for SVM)
     required: false
   RPC_URL:
-    description: RPC URL for Base mainnet (default https://mainnet.base.org)
+    description: EVM RPC URL (default https://mainnet.base.org)
+    required: false
+  SOLANA_RPC_URL:
+    description: Solana or SVM-compatible JSON-RPC URL
+    required: false
+  SVM_TOOL_REGISTRY_PROGRAM_ID:
+    description: Base58 program id of a deployed SVM tool registry (optional)
+    required: false
+  PRIVY_SVM_WALLET_ID:
+    description: Privy Solana wallet id for external SVM signing (no secret key)
     required: false
 dependencies:
   - node >= 18.0.0
@@ -21,16 +30,16 @@ dependencies:
 
 # OpenSea Tool SDK
 
-Build, register, and gate AI-callable tool endpoints using the OpenSea Tool Registry (ERC-8257) on Base.
+Build, register, and gate AI-callable HTTPS tools. On Solana, use SIWS + SPL RPC gates and x402 SVM payments. On EVM, use the OpenSea Tool Registry (ERC-8257) on Base.
 
 ## When to use this skill (`scope_in`)
 
 Use `opensea-tool-sdk` when you need to:
 
 - Scaffold an AI-callable tool endpoint (HTTPS, JSON Schema, `.well-known` manifest) for Vercel, Cloudflare, or Express
-- Register a tool onchain on the Base ToolRegistry so other agents can discover it
-- Gate access via x402 pay-per-call (USDC) or predicates (ERC-721/ERC-1155 ownership, subscriptions, trait gating, ERC-20 balance, composites)
-- Call a gated or paid tool: 402 payments (`paidFetch`), predicate-gated auth (`eip3009AuthenticatedFetch`), or both (`paidAuthenticatedFetch`)
+- Register a tool onchain on the Base ToolRegistry **or** plan an SVM `register_tool` instruction (`--network solana --dry-run`)
+- Gate access via x402 (USDC on Base **or** Solana) or predicates (EVM ERC-721/20, or SVM SPL token/NFT / native SOL via RPC)
+- Call a gated or paid tool: `paidFetch`, `eip3009AuthenticatedFetch` (EVM), `siwsAuthenticatedFetch` (SVM)
 - Search and discover registered tools via the OpenSea REST API
 
 ## When NOT to use this skill (`scope_out`, handoff)
@@ -50,11 +59,12 @@ This SDK is for tool *providers and consumers*. To query OpenSea marketplace dat
 |------|---------|
 | **Tool** | A single REST API endpoint with a JSON Schema interface, discoverable via `/.well-known/ai-tool/<slug>.json`. Each tool should perform one focused operation. |
 | **Manifest** | JCS-canonicalized JSON describing the tool's name, endpoint, inputs, outputs, pricing, and access policy |
-| **ToolRegistry** | Onchain contract (Base) where tools are registered with a manifest hash and optional access predicate |
-| **Access Predicate** | An `IAccessPredicate` contract that gates who can invoke a tool (NFT ownership, subscriptions, trait gating, ERC-20 balance, composites) |
-| **x402** | HTTP 402-based pay-per-call protocol (caller signs a USDC `TransferWithAuthorization`; server settles after execution) |
-| **EIP-3009 auth** | Zero-value USDC `TransferWithAuthorization` signature used to authenticate callers for predicate-gated tools |
-| **Facilitator** | Third-party service that verifies and settles x402 payments (PayAI or Coinbase CDP) |
+| **ToolRegistry** | EVM: onchain contract (Base) where tools are registered with a keccak256 manifest hash. SVM: PDA `ToolRecord` accounts planned by `SvmToolRegistryClient` (no canonical program deployed yet) |
+| **Access Predicate** | EVM: an `IAccessPredicate` contract (NFT ownership, subscriptions, trait gating, ERC-20 balance, composites). SVM: RPC policies (`spl-token-balance`, `spl-nft-owner`, `native-sol-balance`) via `svmPredicateGate` |
+| **x402** | HTTP 402 pay-per-call. EVM: USDC `TransferWithAuthorization`. SVM: SPL `TransferChecked`; facilitator is `extra.feePayer` |
+| **EIP-3009 auth** | Zero-value USDC `TransferWithAuthorization` used to authenticate callers for EVM predicate-gated tools |
+| **SIWS** | Sign-In With Solana (ed25519). SVM identity gate (`siwsGate`, `siwsAuthenticatedFetch`) |
+| **Facilitator** | Third-party service that verifies and settles x402 payments (PayAI or Coinbase CDP; SVM fee payer) |
 
 ## Important Constraints
 
@@ -274,9 +284,20 @@ The CLI:
 1. Fetches the manifest from `--metadata` URL
 2. Validates the manifest schema
 3. Verifies `manifest.creatorAddress` matches your wallet
-4. Computes the JCS keccak256 manifest hash
-5. Calls `ToolRegistry.registerTool(metadataURI, manifestHash, accessPredicate)`
-6. Returns the `toolId` from the `ToolRegistered` event
+4. Computes the JCS keccak256 manifest hash (EVM) or SHA-256 (`--network solana`)
+5. Calls `ToolRegistry.registerTool` on EVM, or prints/signs an SVM `register_tool` instruction plan
+6. Returns the `toolId` from the `ToolRegistered` event on EVM. SVM live send requires `--program-id` and an external wallet; `--dry-run` never signs.
+
+SVM dry-run (no wallet, no program, no send):
+
+```bash
+npx @opensea/tool-sdk hash ./src/manifest.ts --algorithm sha256
+npx @opensea/tool-sdk register \
+  --metadata https://my-tool.example.com/.well-known/ai-tool/my-tool.json \
+  --network solana \
+  --spl-gate <MINT> \
+  --dry-run
+```
 
 ### 2b. Via SDK (programmatic)
 
@@ -365,14 +386,14 @@ const account = await createBankrAccount("your-bankr-api-key")
 |---------|---------|
 | `init` | Scaffold a new tool project |
 | `validate` | Validate a manifest file |
-| `hash` | Compute the JCS keccak256 hash of a manifest |
+| `hash` | Compute the JCS hash of a manifest (`keccak256` default; `--algorithm sha256` for SVM) |
 | `export` | Export the manifest as JSON |
-| `register` | Register a tool onchain. Supports `--nft-gate`, `--erc20-gate` + `--erc20-min-balance`, or `--predicate-config` to bundle predicate setup with registration |
-| `update-metadata` | Update a tool's metadata URI and manifest hash onchain |
-| `inspect` | Look up a tool's onchain config by ID |
+| `register` | Register a tool onchain. EVM: `--nft-gate`, `--erc20-gate`, `--predicate-config`. SVM: `--network solana --spl-gate --dry-run` (instruction plan; live send needs `--program-id`) |
+| `update-metadata` | Update a tool's metadata URI and manifest hash onchain (EVM tx or SVM instruction plan) |
+| `inspect` | Look up a tool's onchain config by ID (SVM: `--check-access` + `--spl-gate` works without a program) |
 | `verify` | Verify a manifest against its onchain hash |
 | `deploy` | Deploy a tool to Vercel |
-| `auth` | Call a predicate-gated tool (EIP-3009) |
+| `auth` | Call a gated tool (EIP-3009 on EVM, SIWS on SVM) |
 | `pay` | Call an x402-paid or gated tool (probes for 402, signs, retries). Handles x402 v1/v2 and GET tools. Flags: `--method <verb>` (defaults POST; bodyless verbs put params in the query string; auto-falls back to GET on a 404/405 POST probe), `--max-amount <baseUnits>` spend cap (default 10 USDC, `unlimited` to disable), `--body`, `--wallet-provider` |
 | `smoke` | Auto-detect gate type and call |
 | `dry-run-gate` | Simulate an x402 gate check locally |

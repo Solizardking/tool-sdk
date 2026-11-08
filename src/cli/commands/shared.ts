@@ -8,7 +8,7 @@ export const WALLET_PROVIDER_OPTION_DESCRIPTION = `Wallet provider: ${WALLET_PRO
 
 /** Help text for the `--rpc-url` CLI option, shared across commands. */
 export const RPC_URL_OPTION_DESCRIPTION =
-  "RPC endpoint (falls back to the RPC_URL env var, then the network's default public RPC)"
+  "RPC endpoint (EVM: RPC_URL; SVM: SOLANA_RPC_URL or SVM_RPC_URL; flag wins, then the network default)"
 
 /**
  * Resolve the RPC URL for a command, in priority order:

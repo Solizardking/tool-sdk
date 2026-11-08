@@ -185,6 +185,6 @@ export const initCommand = new Command("init")
     }
     console.log(`\n  npx @opensea/tool-sdk validate ./src/manifest.ts`)
     console.log(
-      `  npx @opensea/tool-sdk register --metadata <url> --network base`,
+      `  npx @opensea/tool-sdk register --metadata <url> --network solana --dry-run`,
     )
   })

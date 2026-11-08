@@ -1,5 +1,7 @@
 # Predicate-Gated Tools Guide
 
+> **SVM:** On Solana, identity is Sign-In With Solana (`siwsGate`) and token gates are RPC SPL checks (`svmPredicateGate`). This page documents the EVM `predicateGate`. See [svm.md](./svm.md).
+
 Gate your tool using the onchain access predicate system. The gate uses a unified 402 challenge flow: it returns `PaymentRequirements` with `maxAmountRequired: "0"`, and the caller signs a zero-value `X-Payment` header (an EIP-3009 `TransferWithAuthorization` with `value=0`). The signed recipient is derived from the endpoint URL, tool ID, and operator. The SDK checks that audience binding, recovers the caller's address, and delegates the access decision to the `ToolRegistry` contract.
 
 ## Overview
