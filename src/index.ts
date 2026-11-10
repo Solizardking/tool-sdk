@@ -21,6 +21,8 @@ export {
   createSiweAuthHeader,
   createSiweMessage,
 } from "./lib/client/siwe-auth.js"
+export type { SiwsAuthenticatedFetchOptions } from "./lib/client/siws-auth.js"
+export { siwsAuthenticatedFetch } from "./lib/client/siws-auth.js"
 export type {
   PaidFetchOptions,
   PaymentRequirements,
@@ -32,6 +34,7 @@ export {
   signX402Payment,
   X402PaymentError,
 } from "./lib/client/x402-payment.js"
+export { ExactSvmScheme, signSvmExactPayment } from "./lib/client/x402-svm.js"
 export { ToolHandlerError } from "./lib/handler/error.js"
 export type { ToolHandlerConfig } from "./lib/handler/index.js"
 export { createToolHandler } from "./lib/handler/index.js"
@@ -74,6 +77,10 @@ export {
   paidPredicateGate,
   predicateGate,
 } from "./lib/middleware/predicate-gate.js"
+export type { SiwsGateConfig } from "./lib/middleware/siws-gate.js"
+export { siwsGate } from "./lib/middleware/siws-gate.js"
+export type { SvmPredicateGateConfig } from "./lib/middleware/svm-predicate-gate.js"
+export { svmPredicateGate } from "./lib/middleware/svm-predicate-gate.js"
 export type { WellKnownHandlerOptions } from "./lib/middleware/well-known.js"
 export { createWellKnownHandler } from "./lib/middleware/well-known.js"
 export type { X402GateConfig } from "./lib/middleware/x402.js"
@@ -101,6 +108,12 @@ export {
   USDC_BASE_SEPOLIA_ADDRESS,
   x402UsdcPricing,
 } from "./lib/middleware/x402-facilitators.js"
+export type { SvmX402GateConfig } from "./lib/middleware/x402-svm.js"
+export {
+  defineSvmToolPaywall,
+  svmX402Gate,
+  x402SvmUsdcPricing,
+} from "./lib/middleware/x402-svm.js"
 export {
   CompositePredicateABI,
   ERC20BalancePredicateABI,
@@ -169,6 +182,49 @@ export {
   derivePredicateGateRecipient,
   normalizePredicateGateAudience,
 } from "./lib/predicate-gate-audience.js"
+export type {
+  CheckSvmToolAccessOptions,
+  ExternalSvmSignerParams,
+  SvmAccessPolicy,
+  SvmAccessRequirement,
+  SvmAddress,
+  SvmInstructionPlan,
+  SvmNetwork,
+  SvmPredicateResult,
+  SvmRpcClientConfig,
+  SvmToolRecord,
+} from "./lib/svm/index.js"
+export {
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+  assertSvmAddress,
+  COMPUTE_BUDGET_PROGRAM_ADDRESS,
+  checkSvmToolAccess,
+  computeSvmManifestHash,
+  createExternalSvmSigner,
+  createSiwsAuthHeader,
+  createSiwsMessage,
+  defineSvmNetwork,
+  evaluateSvmAccessPolicy,
+  findAssociatedTokenAddress,
+  findProgramAddress,
+  formatPlan,
+  getSvmNetwork,
+  isSvmAddress,
+  isSvmNetworkName,
+  parseSvmAccessExtension,
+  requireSvmAdapter,
+  SVM_CAIP2,
+  SVM_NETWORKS,
+  SvmRegistryNotConfiguredError,
+  SvmRpcClient,
+  SvmToolRegistryClient,
+  SYSTEM_PROGRAM_ADDRESS,
+  TOKEN_2022_PROGRAM_ADDRESS,
+  TOKEN_PROGRAM_ADDRESS,
+  USDC_MINT_DEVNET,
+  USDC_MINT_MAINNET,
+  verifySiws,
+} from "./lib/svm/index.js"
 export type {
   CallerEip3009UsageEvent,
   CallerUsageReporterConfig,

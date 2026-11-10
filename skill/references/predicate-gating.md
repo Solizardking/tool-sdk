@@ -1,5 +1,7 @@
 # Predicate-Gated Tools (402 Challenge + 403 Access Control)
 
+> **SVM:** use `siwsGate` + `svmPredicateGate` (SPL / native SOL via JSON-RPC). This page is the EVM `predicateGate` flow.
+
 Predicate gating restricts tool access based on onchain state (NFT ownership, subscriptions, composite logic). The gate uses the same 402 challenge flow as x402: the server returns `HTTP 402` with `PaymentRequirements` (`maxAmountRequired: "0"`), and the caller retries with a zero-value `X-Payment` header. The signed `to` address is derived from the endpoint URL, tool ID, and operator so an authorization captured by another endpoint cannot be replayed here. The server recovers the caller's address from the signature and checks the configured `IAccessPredicate` contract via the ToolRegistry.
 
 ## How predicate gating works

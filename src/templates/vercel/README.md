@@ -24,5 +24,6 @@ npx vercel
 
 ```bash
 npx @opensea/tool-sdk verify {{TOOL_ENDPOINT}}/.well-known/ai-tool/{{TOOL_SLUG}}.json
+npx @opensea/tool-sdk register --metadata {{TOOL_ENDPOINT}}/.well-known/ai-tool/{{TOOL_SLUG}}.json --network solana --dry-run
 npx @opensea/tool-sdk register --metadata {{TOOL_ENDPOINT}}/.well-known/ai-tool/{{TOOL_SLUG}}.json --network base
 ```

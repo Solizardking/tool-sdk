@@ -347,7 +347,17 @@ async function runPaymentOnly(
   console.log(`  Pay To: ${requirements.payTo}`)
   console.log(`  Asset: ${requirements.asset}`)
 
-  console.log(pc.cyan("\nSigning EIP-3009 transferWithAuthorization..."))
+  const svmPay =
+    requirements.network.startsWith("solana") ||
+    requirements.network === "solana-devnet" ||
+    requirements.network === "solana-testnet"
+  console.log(
+    pc.cyan(
+      svmPay
+        ? "\nSigning SVM x402 TransferChecked (partial, facilitator is fee payer)..."
+        : "\nSigning EIP-3009 transferWithAuthorization...",
+    ),
+  )
 
   const client = createX402Client(adapter, requirements.network, x402Version)
   const { x402HTTPClient } = await import("@x402/core/client")
@@ -388,10 +398,10 @@ async function runPaymentOnly(
 
   if (reportUsage && paidRes.ok && settlementTx) {
     const resolved = resolveNetwork(requirements.network)
-    if (!resolved) {
+    if (resolved?.family !== "evm" || !resolved.chainId) {
       console.warn(
         pc.yellow(
-          `Skipping usage report — unsupported network: ${requirements.network}`,
+          `Skipping usage report — unsupported or non-EVM network: ${requirements.network}`,
         ),
       )
     } else {
@@ -402,7 +412,7 @@ async function runPaymentOnly(
           toolEndpoint: url,
           callerAddress: callerAddress as `0x${string}`,
           txHash: settlementTx,
-          chainId: resolved.chainId,
+          chainId: resolved.chainId as number,
           ...toolRef,
         },
         { apiKey },

@@ -143,7 +143,7 @@ export async function paidAuthenticatedFetch(
     if (reportCallerUsage && res.ok) {
       const settlement = extractSettlementTxHash(res)
       const resolved = resolveNetwork(requirements.network)
-      if (settlement && resolved) {
+      if (settlement && resolved?.family === "evm" && resolved.chainId) {
         const config =
           typeof reportCallerUsage === "object" ? reportCallerUsage : {}
         reportCallerX402Usage(

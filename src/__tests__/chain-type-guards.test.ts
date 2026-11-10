@@ -45,10 +45,7 @@ describe("EIP-712 commands reject a Solana wallet", () => {
     return errorSpy
   }
 
-  it("auth rejects it before checksumming the address", async () => {
-    // Ordering is the point. viem's getAddress() throws on a base58 key, so a guard placed after
-    // the address lookup never runs and the user is told the address failed rather than that
-    // their wallet is the wrong chain.
+  it("auth uses SIWS for a Solana wallet instead of checksumming it as EVM", async () => {
     const errorSpy = await arrange()
     const { authCommand } = await import("../cli/commands/auth.js")
 
@@ -63,9 +60,9 @@ describe("EIP-712 commands reject a Solana wallet", () => {
     ).rejects.toThrow("process.exit")
 
     const output = errorSpy.mock.calls.map(c => c.join(" ")).join("\n")
-    expect(output).toContain("signs for svm")
-    expect(output).toContain("requires an EVM wallet")
+    expect(output).not.toContain("requires an EVM wallet")
     expect(output).not.toContain("Failed to retrieve wallet address")
+    expect(output).toMatch(/signMessage|Failed to reach/i)
   })
 
   it("smoke rejects it before checksumming the address", async () => {
@@ -89,15 +86,14 @@ describe("EIP-712 commands reject a Solana wallet", () => {
 
   it("names the provider so the caller knows which wallet to change", async () => {
     const errorSpy = await arrange()
-    const { authCommand } = await import("../cli/commands/auth.js")
+    const { smokeCommand } = await import("../cli/commands/smoke.js")
 
     await expect(
-      authCommand.parseAsync([
+      smokeCommand.parseAsync([
         "node",
-        "auth",
+        "smoke",
+        "--endpoint",
         "https://tool.example.com/api",
-        "--body",
-        "{}",
       ]),
     ).rejects.toThrow("process.exit")
 

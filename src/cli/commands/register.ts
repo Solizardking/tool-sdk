@@ -33,7 +33,12 @@ import {
   type WalletProvider,
   walletAdapterToClient,
 } from "../../lib/wallet/index.js"
-import { getChain, NETWORK_OPTION_DESCRIPTION } from "./get-chain.js"
+import {
+  getChain,
+  NETWORK_OPTION_DESCRIPTION,
+  resolveCliNetwork,
+} from "./get-chain.js"
+import { runSvmRegister } from "./register-svm.js"
 import {
   RPC_URL_OPTION_DESCRIPTION,
   resolveRpcUrl,
@@ -44,6 +49,9 @@ import { warnBareExtensionKeys } from "./warn-bare-extensions.js"
 interface RegisterOptions {
   metadata: string
   network: string
+  programId?: string
+  splGate?: string
+  splMinBalance?: string
   nftGate?: string
   erc20Gate?: string
   erc20MinBalance?: string
@@ -56,12 +64,26 @@ interface RegisterOptions {
 }
 
 export const registerCommand = new Command("register")
-  .description("Register a tool onchain via the ToolRegistry")
+  .description(
+    "Register a tool onchain via the ToolRegistry (EVM) or SVM program (solana*)",
+  )
   .option("--metadata <url>", "Metadata URI (required)")
   .option("--network <network>", NETWORK_OPTION_DESCRIPTION, "base")
   .option(
+    "--program-id <address>",
+    "SVM tool-registry program id (base58). Falls back to SVM_TOOL_REGISTRY_PROGRAM_ID",
+  )
+  .option(
+    "--spl-gate <mint>",
+    "SVM: SPL token mint that must be held to call the tool (RPC policy; pair with solana.tool-sdk/access on the manifest)",
+  )
+  .option(
+    "--spl-min-balance <amount>",
+    "SVM: minimum raw SPL token amount for --spl-gate (default 1)",
+  )
+  .option(
     "--nft-gate <address>",
-    "ERC-721 collection address; gates the tool via the canonical ERC721OwnerPredicate (version auto-detected from registry)",
+    "EVM: ERC-721 collection address; SVM: SPL NFT mint. Gates the tool via the matching predicate",
   )
   .option(
     "--erc20-gate <token>",
@@ -84,6 +106,23 @@ export const registerCommand = new Command("register")
     if (!options.metadata) {
       console.error(pc.red("Error: --metadata is required"))
       process.exit(1)
+    }
+
+    const cliNetwork = resolveCliNetwork(options.network)
+    if (cliNetwork.family === "svm") {
+      await runSvmRegister({
+        metadata: options.metadata,
+        network: options.network,
+        programId: options.programId,
+        splGate: options.splGate,
+        splMinBalance: options.splMinBalance,
+        nftGate: options.nftGate,
+        walletProvider: options.walletProvider,
+        rpcUrl: options.rpcUrl,
+        dryRun: options.dryRun,
+        yes: options.yes,
+      })
+      return
     }
 
     const gateFlags = [

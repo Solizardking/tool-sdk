@@ -3,7 +3,17 @@ import {
   USDC_BASE_SEPOLIA_ADDRESS,
   type X402Network,
 } from "../middleware/x402-facilitators.js"
+import { getSvmNetwork, isSvmNetworkName } from "../svm/networks.js"
 import type { PaymentRequirements } from "./x402-payment.js"
+
+export type ResolvedX402Network = {
+  family: "evm" | "svm"
+  /** EVM chain id. Omitted for SVM (use `caip2`). */
+  chainId?: number
+  usdc: string
+  canonical: string
+  caip2?: string
+}
 
 /**
  * Resolve an x402 `network` identifier to its chain id and canonical USDC
@@ -11,24 +21,47 @@ import type { PaymentRequirements } from "./x402-payment.js"
  * (`base`, `base-sepolia`) and the CAIP-2 / numeric forms emitted by the
  * broader x402 ecosystem (`eip155:8453`, `8453`). Returns `undefined` for
  * unsupported networks so callers can throw a descriptive error.
+ *
+ * Solana identifiers (`solana`, `solana-devnet`, CAIP-2 `solana:…`) resolve
+ * to the SVM family with the cluster's USDC mint.
  */
 export function resolveNetwork(
   network: string,
-): { chainId: number; usdc: string; canonical: X402Network } | undefined {
+): ResolvedX402Network | undefined {
   switch (network) {
     case "base":
     case "eip155:8453":
     case "8453":
-      return { chainId: 8453, usdc: USDC_BASE_ADDRESS, canonical: "base" }
+      return {
+        family: "evm",
+        chainId: 8453,
+        usdc: USDC_BASE_ADDRESS,
+        canonical: "base" satisfies X402Network,
+      }
     case "base-sepolia":
     case "eip155:84532":
     case "84532":
       return {
+        family: "evm",
         chainId: 84532,
         usdc: USDC_BASE_SEPOLIA_ADDRESS,
         canonical: "base-sepolia",
       }
     default:
+      if (isSvmNetworkName(network) || network.startsWith("solana")) {
+        try {
+          const svm = getSvmNetwork(network === "solana:*" ? "solana" : network)
+          if (!svm.usdcMint) return undefined
+          return {
+            family: "svm",
+            usdc: svm.usdcMint,
+            canonical: svm.name,
+            caip2: svm.caip2,
+          }
+        } catch {
+          return undefined
+        }
+      }
       return undefined
   }
 }

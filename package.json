@@ -1,8 +1,8 @@
 {
   "name": "@opensea/tool-sdk",
-  "version": "0.31.1",
+  "version": "0.32.0",
   "type": "module",
-  "description": "SDK and CLI for building ERC-8257 compliant AI agent tools",
+  "description": "SDK and CLI for building AI agent tools on Solana (SVM) and ERC-8257 EVM registries",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ProjectOpenSea/tool-sdk.git"
@@ -43,6 +43,8 @@
     "@opensea/wallet-adapters": "^1.2.1",
     "@x402/core": "2.15.0",
     "@x402/fetch": "2.15.0",
+    "@noble/curves": "^1.9.1",
+    "@noble/hashes": "^1.8.0",
     "canonicalize": "2.1.0",
     "commander": "14.0.3",
     "jiti": "2.6.1",
@@ -67,6 +69,8 @@
     "tool",
     "registry",
     "erc",
+    "solana",
+    "svm",
     "sdk",
     "cli"
   ],

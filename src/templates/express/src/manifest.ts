@@ -22,5 +22,6 @@ export const manifest = defineManifest({
       result: { type: "string" },
     },
   },
+  // Lowercase 0x EVM address, or Solana base58 pubkey for --network solana.
   creatorAddress: "{{CREATOR_ADDRESS}}",
 })

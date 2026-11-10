@@ -504,6 +504,12 @@ async function verifyXPaymentAuth(
       status: 401,
     }
   }
+  if (resolved.family !== "evm" || resolved.chainId === undefined) {
+    return {
+      error: `Predicate gate: SVM network '${network}' cannot authenticate EIP-3009; use siwsGate / svmPredicateGate`,
+      status: 401,
+    }
+  }
   const chainId = resolved.chainId
   const tokenAddress = resolved.usdc as `0x${string}`
 

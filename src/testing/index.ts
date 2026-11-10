@@ -23,6 +23,28 @@ export function createMockManifest(
   }
 }
 
+/** System-program address; valid Solana pubkey used as a fixture. */
+export const MOCK_SVM_CREATOR = "11111111111111111111111111111111"
+
+/**
+ * Manifest whose `creatorAddress` is a Solana pubkey. Namespaced SVM access
+ * lives on `solana.tool-sdk/access` and is preserved by loose-object validation.
+ */
+export function createMockSvmManifest(
+  overrides?: Partial<ToolManifest> & Record<string, unknown>,
+): ToolManifest {
+  return {
+    type: "https://ercs.ethereum.org/ERCS/erc-8257#tool-manifest-v1",
+    name: "svm-test-tool",
+    description: "A test tool for SVM unit tests",
+    endpoint: "https://test.example.com",
+    inputs: { type: "object" },
+    outputs: { type: "object" },
+    creatorAddress: MOCK_SVM_CREATOR,
+    ...overrides,
+  } as ToolManifest
+}
+
 /**
  * Returns a valid {@link ToolContext} with sensible defaults.
  * Pass partial overrides to customise individual fields.

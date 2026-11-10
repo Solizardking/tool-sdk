@@ -13,8 +13,9 @@ export type GateMiddleware = {
 }
 
 export interface InvocationEvent {
-  callerAddress?: `0x${string}`
-  agentAddress?: `0x${string}`
+  /** EVM `0x` address or Solana base58 pubkey. */
+  callerAddress?: string
+  agentAddress?: string
   /**
    * The caller's original verified EIP-3009 zero-value authorization, when an
    * auth gate (e.g. `predicateGate`) recovered one from the request. Carried
@@ -41,9 +42,10 @@ export interface InvocationEvent {
 }
 
 export interface ToolContext {
-  callerAddress?: `0x${string}`
+  /** EVM `0x` address or Solana base58 pubkey. */
+  callerAddress?: string
   /** When a delegated agent call is verified, this holds the agent's address. */
-  agentAddress?: `0x${string}`
+  agentAddress?: string
   /**
    * The caller's verified EIP-3009 zero-value authorization, stashed by an
    * auth gate so downstream usage reporting can forward the caller's own

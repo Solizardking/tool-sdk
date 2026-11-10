@@ -641,9 +641,9 @@ export function defineToolPaywall(config: ToolPaywallConfig): {
         try {
           await config.onSettle({
             txHash: ctx.gates.x402.settlementTxHash,
-            payer:
-              (ctx.gates.x402.payer as `0x${string}` | undefined) ??
-              ctx.callerAddress,
+            payer: (ctx.gates.x402.payer ?? ctx.callerAddress) as
+              | `0x${string}`
+              | undefined,
           })
         } catch (err) {
           console.error("[tool-sdk] onSettle callback failed:", err)

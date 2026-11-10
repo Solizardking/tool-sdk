@@ -9,18 +9,24 @@ import {
   type WalletProvider,
   walletAdapterToClient,
 } from "../../lib/wallet/index.js"
-import { getChain, NETWORK_OPTION_DESCRIPTION } from "./get-chain.js"
+import {
+  getChain,
+  NETWORK_OPTION_DESCRIPTION,
+  resolveCliNetwork,
+} from "./get-chain.js"
 import {
   parseToolId,
   RPC_URL_OPTION_DESCRIPTION,
   resolveRpcUrl,
   WALLET_PROVIDER_OPTION_DESCRIPTION,
 } from "./shared.js"
+import { runSvmUpdateMetadata } from "./update-metadata-svm.js"
 
 interface UpdateMetadataOptions {
   toolId: string
   metadata: string
   network: string
+  programId?: string
   walletProvider?: string
   rpcUrl?: string
   dryRun?: boolean
@@ -32,6 +38,7 @@ export const updateMetadataCommand = new Command("update-metadata")
   .option("--tool-id <id>", "Numeric tool ID (required)")
   .option("--metadata <url>", "New metadata URI (required)")
   .option("--network <network>", NETWORK_OPTION_DESCRIPTION, "base")
+  .option("--program-id <address>", "SVM tool-registry program id (base58)")
   .option("--wallet-provider <provider>", WALLET_PROVIDER_OPTION_DESCRIPTION)
   .option("--rpc-url <url>", RPC_URL_OPTION_DESCRIPTION)
   .option("--dry-run", "Print summary without transacting")
@@ -45,6 +52,12 @@ export const updateMetadataCommand = new Command("update-metadata")
     if (!options.metadata) {
       console.error(pc.red("Error: --metadata is required"))
       process.exit(1)
+    }
+
+    const cliNetwork = resolveCliNetwork(options.network)
+    if (cliNetwork.family === "svm") {
+      await runSvmUpdateMetadata(options)
+      return
     }
 
     const toolId = parseToolId(

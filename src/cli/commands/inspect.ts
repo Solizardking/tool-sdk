@@ -18,7 +18,12 @@ import {
 import { decodeRequirement } from "../../lib/onchain/access.js"
 import { computeManifestHash } from "../../lib/onchain/hash.js"
 import { ToolRegistryClient } from "../../lib/onchain/registry.js"
-import { getChain, NETWORK_OPTION_DESCRIPTION } from "./get-chain.js"
+import {
+  getChain,
+  NETWORK_OPTION_DESCRIPTION,
+  resolveCliNetwork,
+} from "./get-chain.js"
+import { runSvmInspect } from "./inspect-svm.js"
 import {
   classifyResolvedHostname,
   isPrivateHostname,
@@ -32,24 +37,47 @@ import {
 } from "./shared.js"
 
 interface InspectOptions {
-  toolId: string
+  toolId?: string
   network: string
+  programId?: string
   checkAccess?: string
+  splGate?: string
+  splMinBalance?: string
   rpcUrl?: string
+  metadata?: string
 }
 
 export const inspectCommand = new Command("inspect")
   .description(
     "Read onchain tool state and cross-check against the live manifest",
   )
-  .option("--tool-id <id>", "Numeric tool ID (required)")
+  .option(
+    "--tool-id <id>",
+    "Numeric tool ID (required on EVM; optional on SVM with --check-access)",
+  )
   .option("--network <network>", NETWORK_OPTION_DESCRIPTION, "base")
+  .option("--program-id <address>", "SVM tool-registry program id (base58)")
   .option(
     "--check-access <address>",
     "Check whether an address has access to the tool",
   )
+  .option("--spl-gate <mint>", "SVM: SPL mint used for --check-access")
+  .option(
+    "--spl-min-balance <amount>",
+    "SVM: minimum raw amount for --spl-gate",
+  )
+  .option(
+    "--metadata <url>",
+    "SVM: live manifest URL to print solana.tool-sdk/access",
+  )
   .option("--rpc-url <url>", RPC_URL_OPTION_DESCRIPTION)
   .action(async (options: InspectOptions) => {
+    const cliNetwork = resolveCliNetwork(options.network)
+    if (cliNetwork.family === "svm") {
+      await runSvmInspect(options)
+      return
+    }
+
     if (!options.toolId) {
       console.error(pc.red("Error: --tool-id is required"))
       process.exit(1)
